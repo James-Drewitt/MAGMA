@@ -1,5 +1,5 @@
 
-##     Melt And Glass Molecular Analysis (MAGMA)   
+#     Melt And Glass Molecular Analysis (MAGMA)   
                                                    
-#           Dr James W E Drewitt, June 2020       
+##           Dr James W E Drewitt, June 2020       
 
