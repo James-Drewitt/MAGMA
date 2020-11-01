@@ -1,8 +1,9 @@
 ##
-## AUTHOR: JAMES DREWITT
+## AUTHOR: DR JAMES DREWITT
 ##
+## james.drewitt@bristol.ac.uk
 
-Mod_date = "12/08/2020"
+Mod_date = "01/11/2020"
 
 from myconfig import * # import analysis parameters
 from wel import welcome
@@ -28,7 +29,7 @@ cn_tot2 -> average beta-centred partial coordinations
 n_b  -> number of beta atoms
 '''
 
-data, data2, = CN(xyz, T_step, alpha, beta, r_cut, L, save_config)
+data, data2, = CN(xyz, T_step, alpha, beta, r_cut, L, save_config, xyz_numT)
 
 '''
 Calculate bond angle distributions

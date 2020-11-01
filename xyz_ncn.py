@@ -1,5 +1,7 @@
-# James Drewitt, 27/08/2020
+# Dr James Drewitt, 27/08/2020
 #
+# james.drewitt@bristol.ac.uk
+
 import time
 import numpy as np
 from xyz_bad import bad

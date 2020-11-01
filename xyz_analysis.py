@@ -1,11 +1,14 @@
-# James Drewitt, 23/06/2020 # last update: 26/08/2020
+# Dr James Drewitt, 23/06/2020
+# last update: 01/11/2020
 #
+# james.drewitt@bristol.ac.uk
+
 import numpy as np
 import time
 from xyz_CN_subroutines import *
 
 
-def CN(file,T_step,alpha,beta,rcut,L, save_config):
+def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT):
 
     start = time.time() # initiate runtime timer
     
@@ -21,9 +24,17 @@ def CN(file,T_step,alpha,beta,rcut,L, save_config):
 
     #determine number of trajectories:
     n_traj = int(len(data_list) / (n_atoms+2))
-    n_traj_T = int(n_traj/T_step)
     #
     print(f"\n xyz trajectory file contains {n_atoms} atoms and {n_traj} trajectories")
+
+    if n_traj > xyz_numT:
+        trunc_traj = int(n_traj - xyz_numT)
+        trunc_lines = int(trunc_traj *(n_atoms+2))
+        print(f"\n truncating the first {trunc_traj} trajectories ({trunc_lines} lines)")
+        del data_list[0:trunc_lines]
+
+    n_traj = int(len(data_list) / (n_atoms+2))
+    n_traj_T = int(n_traj/T_step)
     print(f"\n *** Calculating {alpha}-{beta} coordination ***")
     print(f" sampling every {T_step} trajectories, total trajectories in analysis = {n_traj_T}")
     #calculate CN(alpha-beta)

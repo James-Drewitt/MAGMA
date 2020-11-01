@@ -1,5 +1,7 @@
-# James Drewitt, 17/08/2020
+# Dr James Drewitt, 17/08/2020
 #
+# james.drewitt@bristol.ac.uk
+
 import numpy as np
 import time
 from math import acos, degrees

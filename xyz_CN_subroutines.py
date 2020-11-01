@@ -1,3 +1,8 @@
+# Dr James Drewitt 01/11/2020
+#
+# james.drewitt@bristol.ac.uk
+
+
 import numpy as np
 
 def d_pbc(coord1, coord2, L):
