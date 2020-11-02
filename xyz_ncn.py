@@ -1,11 +1,11 @@
-# Dr James Drewitt, 27/08/2020
+# James Drewitt, 27/08/2020
 #
-# james.drewitt@bristol.ac.uk
-
 import time
 import numpy as np
 from xyz_bad import bad
 from xyz_CN_subroutines import calc_n_data, av_cn
+import os
+from pathlib import Path
 
 def get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj):
     
@@ -133,7 +133,7 @@ def lifetime(a_set_list, a_list_tot):
     return life_time, mean_lifetime, median_lifetime, max_lifetime, min_lifetime
 
 
-def nCN(p_CN, data, alpha, data2, beta, T_step, save_config):
+def nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir):
 
     start = time.time() # initiate runtime timer
     print(f"\n *** Consider partial coordination {alpha}-{beta} = {p_CN} ***")
@@ -168,6 +168,8 @@ def nCN(p_CN, data, alpha, data2, beta, T_step, save_config):
     
 ######## DATA OUTPUT ####################
 
+    CWD=os.getcwd()
+    
     np_cn_tot2 = np.array(cn_tot2)
     np_cn_tot2 = np.transpose(np_cn_tot2)
     mt_row=np.empty([1, 3], dtype=object)
@@ -216,25 +218,25 @@ def nCN(p_CN, data, alpha, data2, beta, T_step, save_config):
         np_cn_tot2 = np.append(np_cn_tot2, foot3, axis=0)
         np_cn_tot2 = np.append(np_cn_tot2, foot4, axis=0)
 
-    av_CN = beta+"-"+alpha+str(p_CN)+"-av.dat"
+    av_CN = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+str(p_CN)+"-av.dat")
 
     print(f" ... saving {av_CN} ...")
     np.savetxt(av_CN , np_cn_tot2 , delimiter=" " , fmt="%s" )
 
-    filename = beta+"-"+alpha+str(p_CN)+"-traj.dat"
-    np_n_data2 = np.array(n_data2)
-    print(f" ... saving {filename} ...")
-    np.savetxt(filename, np_n_data2, delimiter=" ", fmt ="%s")
-
     if save_config == 1:
-        filename = alpha+str(p_CN)+"-"+beta+"-config.dat"
+        filename = Path(CWD+"/"+working_dir+"/"+alpha+str(p_CN)+"-"+beta+"-config.dat")
         np_p_data = np.array(p_data)
         print(f"\n ... saving {filename} ...")
         np.savetxt(filename, np_p_data, delimiter=" ", fmt ="%s")
 
-        filename = beta+"-"+alpha+str(p_CN)+"-config.dat"
+        filename = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+str(p_CN)+"-config.dat")
         np_p_data2 = np.array(p_data2)
         print(f" ... saving {filename} ...")
         np.savetxt(filename, np_p_data2, delimiter=" ", fmt ="%s")
+
+        filename = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+str(p_CN)+"-traj.dat")
+        np_n_data2 = np.array(n_data2)
+        print(f" ... saving {filename} ...")
+        np.savetxt(filename, np_n_data2, delimiter=" ", fmt ="%s")
 
     return p_data, p_data2

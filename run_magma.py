@@ -10,6 +10,8 @@ from wel import welcome
 from xyz_analysis import CN
 from xyz_bad import bad
 from xyz_ncn import nCN
+import os
+from pathlib import Path
 
 welcome(Mod_date)
 
@@ -29,19 +31,21 @@ cn_tot2 -> average beta-centred partial coordinations
 n_b  -> number of beta atoms
 '''
 
-data, data2, = CN(xyz, T_step, alpha, beta, r_cut, L, save_config, xyz_numT)
+working_dir = alpha+"-"+beta+"_"+str(r_cut)
+
+if all_CN == 1:
+    data, data2, = CN(xyz, T_step, alpha, beta, r_cut, L, save_config, xyz_numT, working_dir)
 
 '''
 Calculate bond angle distributions
 '''
-if BAD == 1:
-    bad(data, alpha, data2, beta, 0, p_CN, L, save_config)
+if all_CN ==1 and BAD == 1:
+    bad(data, alpha, data2, beta, 0, p_CN, L, save_config, working_dir)
 
 '''
 Calculate bond lengths, beta-alpha CN, and BAD for specific partial coordinations
 '''
 if n_CN == 1:
-    p_data, p_data2 = nCN(p_CN, data, alpha, data2, beta, T_step, save_config)
+    p_data, p_data2 = nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir)
     if BAD == 1:
-        bad(p_data, alpha, p_data2, beta, 1, p_CN, L, save_config)
-        
+        bad(p_data, alpha, p_data2, beta, 1, p_CN, L, save_config, working_dir)

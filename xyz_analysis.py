@@ -1,14 +1,12 @@
-# Dr James Drewitt, 23/06/2020
-# last update: 01/11/2020
+# Dr James Drewitt, 23/06/2020 # last update: 01/11/2020
 #
-# james.drewitt@bristol.ac.uk
-
 import numpy as np
 import time
 from xyz_CN_subroutines import *
+import os
+from pathlib import Path
 
-
-def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT):
+def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
 
     start = time.time() # initiate runtime timer
     
@@ -101,10 +99,10 @@ def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT):
         data.append([traj+1, " ", count_a, " ", " "])# provide current trajectory number for output
         data2.append([traj+1, " ", count_b, " ", " "])# provide current trajectory number for output
         
-        data, n_data, n_beta, n_beta_tot = alpha_beta(L, rcut, coord_a, b, coord_b, data, n_data, n_beta_tot)
+        data, n_beta, n_beta_tot = alpha_beta(L, rcut, coord_a, b, coord_b, data, n_beta_tot)
         n_data = calc_n_data(n_beta, traj, n_data) # alpha-beta
 
-        data2, n_data2, n_beta2, n_beta_tot2 = alpha_beta(L, rcut, coord_b, a, coord_a, data2, n_data2, n_beta_tot2)
+        data2, n_beta2, n_beta_tot2 = alpha_beta(L, rcut, coord_b, a, coord_a, data2, n_beta_tot2)
         n_data2 = calc_n_data(n_beta2, traj, n_data2) #beta-alpha
 
     print(f"\n There are {count_a} {alpha} atoms, {count_b} {beta} atoms") 
@@ -116,8 +114,8 @@ def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT):
     elapsed = round(end - start , 4)
     print(f"\n runtime for coordination number calculations = {elapsed} s")
 
-    save_files(alpha, beta, data, n_data, cn_tot, N, save_config) # save alpha-beta
-    save_files(beta, alpha, data2, n_data2, cn_tot2, N2, save_config) # save beta-alpha
+    save_files(alpha, beta, data, n_data, cn_tot, N, save_config, working_dir) # save alpha-beta
+    save_files(beta, alpha, data2, n_data2, cn_tot2, N2, save_config, working_dir) # save beta-alpha
 
     if T_step ==1:
 
@@ -147,7 +145,8 @@ def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT):
         life_array[2] = str3
         life_array[3] = str4
 
-        fname = alpha + "-" + beta + "_bond_lifetime.dat"
+        CWD=os.getcwd()
+        fname = Path(CWD+"/"+working_dir+"/"+alpha + "-" + beta + "_bond_lifetime.dat")
         
         np.savetxt(fname, life_array, delimiter =" ", fmt ="%s")
 

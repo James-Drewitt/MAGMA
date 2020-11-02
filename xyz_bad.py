@@ -1,10 +1,10 @@
-# Dr James Drewitt, 17/08/2020
+# James Drewitt, 17/08/2020
 #
-# james.drewitt@bristol.ac.uk
-
 import numpy as np
 import time
 from math import acos, degrees
+import os
+from pathlib import Path
 
 def pbc(coord1, coord2, L):
 
@@ -106,7 +106,7 @@ def bad_calc(data, alpha, beta, L):
 
     return(BAD_list, np_hist)
 
-def bad(data, alpha, data2, beta, n_CN, p_CN, L, save_config):
+def bad(data, alpha, data2, beta, n_CN, p_CN, L, save_config, working_dir):
 
     start = time.time() # initiate runtime timer
     print(f"\n *** Calculating bond angle distributions ***")
@@ -118,23 +118,33 @@ def bad(data, alpha, data2, beta, n_CN, p_CN, L, save_config):
     elapsed = round(end - start , 4)
     print(f"\n runtime for bond angle calculations = {elapsed} s")
 
-    save_files(1, alpha, beta, BAD_list, hist, n_CN, p_CN, save_config)
-    save_files(2, beta, alpha, BAD_list2, hist2, n_CN, p_CN, save_config)
+    save_files(1, alpha, beta, BAD_list, hist, n_CN, p_CN, save_config, working_dir)
+    save_files(2, beta, alpha, BAD_list2, hist2, n_CN, p_CN, save_config, working_dir)
 
-def save_files(meth, alpha, beta, BAD_list, np_hist, n_CN, p_CN, save_config):
+def save_files(meth, alpha, beta, BAD_list, np_hist, n_CN, p_CN, save_config, working_dir):
 
+    CWD=os.getcwd()
+    #datadir=Path(CWD+"/"+alpha+"-"+beta+"_"+str(rcut))
+    
+    #if not os.path.exists(datadir):
+    #    os.makedirs(datadir)
+
+    #print(datadir)
+    
     np_BAD_list = np.array(BAD_list)
 
     if n_CN == 1:
+        alpha2 = alpha
+        beta2 = beta
         if meth == 1:
-            alpha = alpha+str(p_CN)
+            alpha2 = alpha+str(p_CN)
         if meth == 2:
-            beta = beta+str(p_CN)
-        BAD_file = beta+"-"+alpha+"-"+beta+"_BAD.dat"
-        BAD_hist = beta+"-"+alpha+"-"+beta+"_BAD_hist.dat"
+            beta2 = beta+str(p_CN)
+        BAD_file = Path(CWD+"/"+working_dir+"/"+beta2+"-"+alpha2+"-"+beta2+"_BAD.dat")
+        BAD_hist = Path(CWD+"/"+working_dir+"/"+beta2+"-"+alpha2+"-"+beta2+"_BAD_hist.dat")
     else:
-        BAD_file = beta+"-"+alpha+"-"+beta+"_BAD.dat"
-        BAD_hist = beta+"-"+alpha+"-"+beta+"_BAD_hist.dat"
+        BAD_file = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+"-"+beta+"_BAD.dat")
+        BAD_hist = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+"-"+beta+"_BAD_hist.dat")
 
     print(f" ... saving {BAD_hist}...")
     np.savetxt(BAD_hist , np_hist , delimiter=" " , fmt="%s")
