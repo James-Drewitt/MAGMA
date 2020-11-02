@@ -9,7 +9,7 @@ def welcome(Mod_date):
     print ("##                                                    ##")
     print ("##      Melt And Glass Molecular Analysis (MAGMA)     ##")
     print ("##                                                    ##")
-    print (f"##          {Author}, {Mod_date}             ##")
+    print (f"##          {Author}, {Mod_date}              ##")
     print ("##                                                    ##")
     print ("########################################################")
     print ("########################################################")
