@@ -1,5 +1,5 @@
 def welcome(Mod_date):
-    Author = "James Drewitt"
+    Author = "Dr James Drewitt"
     print ("########################################################")
     print ("########################################################")
     print ("##           __  __   _   ___ __  __   _              ##")
@@ -9,7 +9,7 @@ def welcome(Mod_date):
     print ("##                                                    ##")
     print ("##      Melt And Glass Molecular Analysis (MAGMA)     ##")
     print ("##                                                    ##")
-    print (f"##            {Author}, {Mod_date}               ##")
+    print (f"##          {Author}, {Mod_date}               ##")
     print ("##                                                    ##")
     print ("########################################################")
     print ("########################################################")
