@@ -20,6 +20,8 @@ def get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj):
 
     a_list_list = []
     a_list_tot = [n_traj] # create array to list alpha atoms in all trajectories for lifetime calculation
+
+    bond_distance = []
     
     for i in range(n_traj):
 
@@ -41,6 +43,8 @@ def get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj):
                 a_list_list.append( data[n+1][0] )
                 for k in range(cn_num+2):
                     p_data.append([ data[n+k][0], data[n+k][1], data[n+k][2], data[n+k][3], data[n+k][4] ])
+                for k in range(cn_num):
+                    bond_distance.append(data[n+k+2][4])
                 p_data.append([" "] * 5 )
             n += cn_num + 2
 
@@ -87,7 +91,7 @@ def get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj):
 
     a_set_list = list(set(a_list_list)) # extract unique entries from a_list_list
   
-    return p_data, p_data2, n_data2, n_beta, a_set_list, a_list_tot
+    return p_data, p_data2, n_data2, n_beta, a_set_list, a_list_tot, bond_distance
 
 def lifetime(a_set_list, a_list_tot):
     
@@ -144,7 +148,7 @@ def nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir):
     p_data = [[ n_traj , " Configuration for ", str_n, " ", " " ]]
     p_data2 = [[ n_traj , " Configuration for ", str_n, " ", " " ]]
     
-    p_data, p_data2, n_data2, n_beta2, a_set_list, a_list_tot = get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj)
+    p_data, p_data2, n_data2, n_beta2, a_set_list, a_list_tot, bond_distance = get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj)
 
     cn_tot2 , N2 = av_cn(beta, alpha, n_beta2, n_traj, n_data2) # average beta-alpha CN
 
@@ -169,7 +173,7 @@ def nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir):
 ######## DATA OUTPUT ####################
 
     CWD=os.getcwd()
-    
+  
     np_cn_tot2 = np.array(cn_tot2)
     np_cn_tot2 = np.transpose(np_cn_tot2)
     mt_row=np.empty([1, 3], dtype=object)
@@ -222,6 +226,11 @@ def nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir):
 
     print(f" ... saving {av_CN} ...")
     np.savetxt(av_CN , np_cn_tot2 , delimiter=" " , fmt="%s" )
+
+    np_bond_distance = np.array(bond_distance)
+    
+    bond_distance_path = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+str(p_CN)+"-bond_distance.dat")
+    np.savetxt(bond_distance_path , np_bond_distance , delimiter=" " , fmt="%s" )
 
     if save_config == 1:
         filename = Path(CWD+"/"+working_dir+"/"+alpha+str(p_CN)+"-"+beta+"-config.dat")

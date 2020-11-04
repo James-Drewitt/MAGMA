@@ -31,21 +31,29 @@ cn_tot2 -> average beta-centred partial coordinations
 n_b  -> number of beta atoms
 '''
 
-working_dir = alpha+"-"+beta+"_"+str(r_cut)
+f = open(CONT_path)
+lines=f.readlines()
+f.close()
+boxlen, *rest = lines[2].rstrip().split('0.0')
+L=round(float(boxlen),9)
+V=round(L**3,4)
 
-if all_CN == 1:
+print(f"\n box length = {L} Ang; volume = {V} Ang**3")
+
+for i in range(len(r_cut_offs)):
+    r_cut = r_cut_offs[i]
+    working_dir = alpha+"-"+beta+"_"+str(r_cut)
     data, data2, = CN(xyz, T_step, alpha, beta, r_cut, L, save_config, xyz_numT, working_dir)
 
-'''
-Calculate bond angle distributions
-'''
-if all_CN ==1 and BAD == 1:
-    bad(data, alpha, data2, beta, 0, p_CN, L, save_config, working_dir)
+#Calculate bond angle distributions
 
-'''
-Calculate bond lengths, beta-alpha CN, and BAD for specific partial coordinations
-'''
-if n_CN == 1:
-    p_data, p_data2 = nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir)
     if BAD == 1:
-        bad(p_data, alpha, p_data2, beta, 1, p_CN, L, save_config, working_dir)
+        bad(data, alpha, data2, beta, 0, p_CN, L, save_config, working_dir)
+
+#Calculate bond lengths, beta-alpha CN, and BAD for specific partial coordinations
+
+    if n_CN == 1:
+        for j in range(len(p_CN)):
+            p_data, p_data2 = nCN(p_CN[j], data, alpha, data2, beta, T_step, save_config, working_dir)
+            if BAD == 1:
+                bad(p_data, alpha, p_data2, beta, 1, p_CN[j], L, save_config, working_dir)
