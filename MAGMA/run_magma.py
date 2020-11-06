@@ -5,13 +5,13 @@
 
 Mod_date = "01/11/2020"
 
-from myconfig import * # import analysis parameters
 from wel import welcome
 from xyz_analysis import CN
 from xyz_bad import bad
 from xyz_ncn import nCN
 import os
 from pathlib import Path
+from myconfig import * # import analysis parameters
 
 welcome(Mod_date)
 
