@@ -54,6 +54,6 @@ for i in range(len(r_cut_offs)):
 
     if n_CN == 1:
         for j in range(len(p_CN)):
-            p_data, p_data2 = nCN(p_CN[j], data, alpha, data2, beta, T_step, save_config, working_dir)
+            p_data, p_data2 = nCN(p_CN[j], data, alpha, data2, beta, T_step, save_config, working_dir, r_cut)
             if BAD == 1:
                 bad(p_data, alpha, p_data2, beta, 1, p_CN[j], L, save_config, working_dir)

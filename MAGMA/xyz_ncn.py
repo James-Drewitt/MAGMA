@@ -7,7 +7,7 @@ from xyz_CN_subroutines import calc_n_data, av_cn
 import os
 from pathlib import Path
 
-def get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj):
+def get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj, rcut):
     
     n = 0    
     x = 0 # initialise iterators
@@ -90,8 +90,21 @@ def get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj):
         n_data2 = calc_n_data(n_beta, i, n_data2) # partial coordinations beta-alpha
 
     a_set_list = list(set(a_list_list)) # extract unique entries from a_list_list
-  
-    return p_data, p_data2, n_data2, n_beta, a_set_list, a_list_tot, bond_distance
+
+    max_bond = []
+
+    for i in range(len(bond_distance)):
+        if (i+1)%p_CN==0:
+            bonds=bond_distance[i+1-p_CN:i]
+            max_bond.append(max(bonds))
+
+    #print(f"max bond = {max_bond}\n")
+    
+    bins = np.linspace(0, rcut, int(rcut/0.01 +1))
+    np_b_dist_hist, np_hist1 = np.histogram(bond_distance,bins) # generate histogram of bond angles
+
+    np.insert(np_b_dist_hist, 0, 0.01)
+    return p_data, p_data2, n_data2, n_beta_tot, a_set_list, a_list_tot, bond_distance, np_b_dist_hist
 
 def lifetime(a_set_list, a_list_tot):
     
@@ -137,7 +150,7 @@ def lifetime(a_set_list, a_list_tot):
     return life_time, mean_lifetime, median_lifetime, max_lifetime, min_lifetime
 
 
-def nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir):
+def nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir, rcut):
 
     start = time.time() # initiate runtime timer
     print(f"\n *** Consider partial coordination {alpha}-{beta} = {p_CN} ***")
@@ -148,9 +161,9 @@ def nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir):
     p_data = [[ n_traj , " Configuration for ", str_n, " ", " " ]]
     p_data2 = [[ n_traj , " Configuration for ", str_n, " ", " " ]]
     
-    p_data, p_data2, n_data2, n_beta2, a_set_list, a_list_tot, bond_distance = get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj)
+    p_data, p_data2, n_data2, n_beta_tot, a_set_list, a_list_tot, bond_distance, np_b_dist_hist = get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj, rcut)
 
-    cn_tot2 , N2 = av_cn(beta, alpha, n_beta2, n_traj, n_data2) # average beta-alpha CN
+    cn_tot2 , N2 = av_cn(beta, alpha, n_beta_tot, n_traj, n_data2) # average beta-alpha CN
 
     end = time.time() # end runtime timer
     elapsed = round(end - start , 4)
@@ -227,12 +240,15 @@ def nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir):
     print(f" ... saving {av_CN} ...")
     np.savetxt(av_CN , np_cn_tot2 , delimiter=" " , fmt="%s" )
 
-    np_bond_distance = np.array(bond_distance)
-    
-    bond_distance_path = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+str(p_CN)+"-bond_distance.dat")
-    np.savetxt(bond_distance_path , np_bond_distance , delimiter=" " , fmt="%s" )
+    b_dist_path = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+str(p_CN)+"-bond_dist.dat")
+    np.savetxt(b_dist_path, np_b_dist_hist, delimiter=" " , fmt="%s" )
 
     if save_config == 1:
+
+        np_bond_distance = np.array(bond_distance)
+        bond_distance_path = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+str(p_CN)+"-bond_distance.dat")
+        np.savetxt(bond_distance_path , np_bond_distance , delimiter=" " , fmt="%s" )
+        
         filename = Path(CWD+"/"+working_dir+"/"+alpha+str(p_CN)+"-"+beta+"-config.dat")
         np_p_data = np.array(p_data)
         print(f"\n ... saving {filename} ...")

@@ -124,12 +124,6 @@ def bad(data, alpha, data2, beta, n_CN, p_CN, L, save_config, working_dir):
 def save_files(meth, alpha, beta, BAD_list, np_hist, n_CN, p_CN, save_config, working_dir):
 
     CWD=os.getcwd()
-    #datadir=Path(CWD+"/"+alpha+"-"+beta+"_"+str(rcut))
-    
-    #if not os.path.exists(datadir):
-    #    os.makedirs(datadir)
-
-    #print(datadir)
     
     np_BAD_list = np.array(BAD_list)
 

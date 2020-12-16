@@ -107,8 +107,8 @@ def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
 
     print(f"\n There are {count_a} {alpha} atoms, {count_b} {beta} atoms") 
     
-    cn_tot, N = av_cn(alpha, beta, n_beta, n_traj_T, n_data)
-    cn_tot2 , N2 = av_cn(beta, alpha, n_beta2, n_traj_T, n_data2)
+    cn_tot, N = av_cn(alpha, beta, n_beta_tot, n_traj_T, n_data)
+    cn_tot2 , N2 = av_cn(beta, alpha, n_beta_tot2, n_traj_T, n_data2)
 
     end = time.time() # end runtime timer
     elapsed = round(end - start , 4)
