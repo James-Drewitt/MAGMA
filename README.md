@@ -7,4 +7,4 @@
     Dr James W E Drewitt, June 2020      
       james.drewitt@bristol.ac.uk
        
-Post processing script for partial cooordination analysis of melt and glass molecular dynamics trajectories
+Post processing script for partial coordination analysis of melt and glass molecular dynamics trajectories

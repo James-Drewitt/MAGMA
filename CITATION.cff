@@ -1,0 +1,11 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Drewitt
+    given-names: James W E
+    orcid: https://orcid.org/0000-0002-3510-4155
+title: MAGMA: Melt And Glass Molecular Analysis
+publisher: Zenodo. 
+doi: https://doi.org/10.5281/zenodo.6377438
+version: v0.1
+date-released: 2022-03-22
