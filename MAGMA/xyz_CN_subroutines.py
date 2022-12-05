@@ -1,6 +1,10 @@
+#!/usr/bin/env python3
+#
 ## AUTHOR: DR JAMES DREWITT, 01/11/2020
 ##
 ## james.drewitt@bristol.ac.uk
+##
+## Last update: 02/11/2022
 
 import numpy as np
 import os
@@ -46,12 +50,7 @@ def alpha_beta(L, rcut, coord_a, b, coord_b, data, n_beta_tot):
             a_atom=coord_a[i][0]
 
             for j in range(len(coord_b)):
-                x1 = coord_a[i][1]
-                y1 = coord_a[i][2]
-                z1 = coord_a[i][3]
-                x2 = coord_b[j][1]
-                y2 = coord_b[j][2]
-                z2 = coord_b[j][3]
+                x1, y1, z1, x2, y2, z2 = coord_a[i][1], coord_a[i][2], coord_a[i][3], coord_b[j][1], coord_b[j][2], coord_b[j][3] # extract coordinates of aplha-beta atoms
 
                 dx = abs(d_pbc(x1, x2, L))# calculate distance from central atom in each dimension
                 dy = abs(d_pbc(y1, y2, L))
@@ -71,7 +70,6 @@ def alpha_beta(L, rcut, coord_a, b, coord_b, data, n_beta_tot):
                 D=D/n # average alpha-beta distance
             n_beta.append(n)
             n_beta_tot.append(n)
-            string=str(x1)+" "+str(y1)+" "+str(z1)
             string1="n("+a_atom+"-"+b+") ="
             string2="r("+a_atom+"-"+b+") ="
             p_coord=[string1, int(n), " ", string2, D] # array containing partial coordination and distance
@@ -154,72 +152,78 @@ def bond_lifetime(data):
     bond_list_tot = []
 
     n = 0
-
-    for i in range(n_traj):
-
-        bond_list = []
-
-        n += 1
-
-        n_a = data[n][2]
-
-        num_b = 0
-
-        for j in range(n_a):
-            n += 1
-            cn_num = data[n][1] # number of partial coordinations in trajectory
-            a_atom = data[n+1][0]
-            
-            if cn_num > 0:
-                num_b += cn_num
-                for k in range(2,cn_num+2):
-                    bond_name = a_atom+"-"+data[n+k][0]
-                    bond_list.append(bond_name)
-                    bond_list_list.append(bond_name)
-
-            n += cn_num + 2
-
-        bond_list_tot.append(num_b)
-        bond_list_tot.append(bond_list)
+    
+    if n_traj >=2:
         
-    bond_set_list = list(set(bond_list_list)) # generate list of unique bonds only
 
-    tot_bonds = len(bond_set_list)
-
-    life = np.zeros((tot_bonds, n_traj+1), dtype = object)
-    life[:,0] = bond_set_list[:]
-
-    n = 0 # initialise iterator
-
-    for i in range(n_traj): # loop for number of trajectories 
-
-        n_bonds = bond_list_tot[n] # get number of bonds in current trajecty
-
-        b_list = []
-        n += 1
-
-        for j in range(n_bonds):
-            bond = bond_list_tot[n][j]
-            b_list.append(bond)
-        for k in range(tot_bonds):
-            if life[k,0] in b_list:
-                life[k,i+1] = 1
-
-        n += 1
-
-    life_time = []
-
-    for i in range(tot_bonds):
-        L = 0
-        for j in range(n_traj):
-            if life[i, j+1] == 1:
-                L += 1
-                if j == n_traj:
-                    life_time.append(L)
-            else:
-                if L != 0:
-                    life_time.append(L)
-                L = 0 # reset L count
+        for i in range(n_traj):
+    
+            bond_list = []
+    
+            n += 1
+    
+            n_a = data[n][2]
+    
+            num_b = 0
+    
+            for j in range(n_a):
+                n += 1
+                cn_num = data[n][1] # number of partial coordinations in trajectory
+                a_atom = data[n+1][0]
+                
+                if cn_num > 0:
+                    num_b += cn_num
+                    for k in range(2,cn_num+2):
+                        bond_name = a_atom+"-"+data[n+k][0]
+                        bond_list.append(bond_name)
+                        bond_list_list.append(bond_name)
+    
+                n += cn_num + 2
+    
+            bond_list_tot.append(num_b)
+            bond_list_tot.append(bond_list)
+            
+        bond_set_list = list(set(bond_list_list)) # generate list of unique bonds only
+    
+        tot_bonds = len(bond_set_list)
+    
+        life = np.zeros((tot_bonds, n_traj+1), dtype = object)
+        life[:,0] = bond_set_list[:]
+    
+        n = 0 # initialise iterator
+    
+        for i in range(n_traj): # loop for number of trajectories 
+    
+            n_bonds = bond_list_tot[n] # get number of bonds in current trajecty
+    
+            b_list = []
+            n += 1
+    
+            for j in range(n_bonds):
+                bond = bond_list_tot[n][j]
+                b_list.append(bond)
+            for k in range(tot_bonds):
+                if life[k,0] in b_list:
+                    life[k,i+1] = 1
+    
+            n += 1
+    
+        life_time = []
+    
+        for i in range(tot_bonds):
+            L = 0
+            for j in range(n_traj):
+                if life[i, j+1] == 1:
+                    L += 1
+                    if j == n_traj:
+                        life_time.append(L)
+                else:
+                    if L != 0:
+                        life_time.append(L)
+                    L = 0 # reset L count
+                    
+    else:
+        life_time = 1,1
 
     mean_lifetime = np.mean(life_time)
     median_lifetime = np.median(life_time)

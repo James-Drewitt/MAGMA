@@ -1,17 +1,17 @@
+#!/usr/bin/env python3
+#
 ##
 ## AUTHOR: DR JAMES DREWITT
 ##
 ## james.drewitt@bristol.ac.uk
 
-Mod_date = "01/11/2020"
+Mod_date = "02/11/2022"
 
 from wel import welcome
 from xyz_analysis import CN
 from xyz_bad import bad
 from xyz_ncn import nCN
-import os
-from pathlib import Path
-from myconfig import * # import analysis parameters
+from myconfig import CONT_path, xyz, xyz_numT, T_step, alpha, beta, r_cut_offs, BAD, n_CN, p_CN, save_config, Qn # import analysis parameters
 
 welcome(Mod_date)
 
@@ -54,6 +54,6 @@ for i in range(len(r_cut_offs)):
 
     if n_CN == 1:
         for j in range(len(p_CN)):
-            p_data, p_data2 = nCN(p_CN[j], data, alpha, data2, beta, T_step, save_config, working_dir, r_cut)
+            p_data, p_data2 = nCN(p_CN[j], data, alpha, data2, beta, T_step, save_config, working_dir, r_cut, Qn)
             if BAD == 1:
                 bad(p_data, alpha, p_data2, beta, 1, p_CN[j], L, save_config, working_dir)

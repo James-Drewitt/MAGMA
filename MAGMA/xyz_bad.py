@@ -1,4 +1,6 @@
-# James Drewitt, 17/08/2020
+#!/usr/bin/env python3
+#
+# Dr James Drewitt, 17/08/2020. Last update: "02/11/2022"
 #
 import numpy as np
 import time
@@ -109,7 +111,7 @@ def bad_calc(data, alpha, beta, L):
 def bad(data, alpha, data2, beta, n_CN, p_CN, L, save_config, working_dir):
 
     start = time.time() # initiate runtime timer
-    print(f"\n *** Calculating bond angle distributions ***")
+    print("\n *** Calculating bond angle distributions ***")
 
     BAD_list, hist = bad_calc(data, alpha, beta, L) # calc beta-alpha-beta angles
     BAD_list2, hist2 = bad_calc(data2, beta, alpha, L) # calc alpha-beta-alpha angles

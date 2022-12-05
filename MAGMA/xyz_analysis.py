@@ -1,16 +1,17 @@
-# Dr James Drewitt, 23/06/2020 # last update: 01/11/2020
+#!/usr/bin/env python3
+#
+# Dr James Drewitt, 23/06/2020 # last update: 02/11/2022
 #
 import numpy as np
 import time
-from xyz_CN_subroutines import *
+from xyz_CN_subroutines import alpha_beta, calc_n_data, av_cn, bond_lifetime, save_files
 import os
 from pathlib import Path
 
-def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
+def CN(filename,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
 
     start = time.time() # initiate runtime timer
     
-    filename=file
     #Read xyz file
     print(f"\n reading file {filename} ....")
     #
@@ -24,7 +25,8 @@ def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
     n_traj = int(len(data_list) / (n_atoms+2))
     #
     print(f"\n xyz trajectory file contains {n_atoms} atoms and {n_traj} trajectories")
-
+    
+    #truncate xyz trajectory
     if n_traj > xyz_numT:
         trunc_traj = int(n_traj - xyz_numT)
         trunc_lines = int(trunc_traj *(n_atoms+2))
@@ -38,11 +40,13 @@ def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
     #calculate CN(alpha-beta)
     str_n="n("+alpha+"-"+beta+")"
     str_r="r("+alpha+"-"+beta+") [rcut= "+str(rcut)+"])"
-    #str_rcut="[rcut= "+str(rcut)+"])"
-    str_xa="x_"+alpha;str_ya="y_"+alpha;str_za="z_"+alpha
-    str_xb="x_"+beta;str_yb="y_"+beta;str_zb="z_"+beta
 
     # initialise lists for alpha-beta calculation
+    #
+    # data contains the coordinates of alpha-beta atoms for specified coordinations
+    # data2 is the same as data2 but for the beta-alpha pairs
+    # n_data provides the fractional coordinations for each trajectory
+    
     data = [[n_traj_T, "  Partial coordination", str_n, "and mean distance", str_r]] # number of trajectories sampled header
     n_data = [[n_traj_T, " ", " "]]
     n_data.append([alpha, beta, "fractional coordination"])
@@ -60,16 +64,17 @@ def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
         count_a = 0 # reinitilise counter
         count_b = 0
         
+        # iterate over each atom in current trajectory.
+        # each trajectory contains two header lines followed by natoms lines.
+        
         for i in range(2+traj*(n_atoms+2), n_atoms+2+traj*(n_atoms+2)): # iterate over each atom in current trajectory
 
             coord=data_list[i].split() # get atomic coordinates of current atom
             
             if coord[0]==alpha: # execute if current atom is desired alpha
 
-                x = float(coord[1])
-                y = float(coord[2])
-                z = float(coord[3])
-                a = coord[0]
+                a, x, y, z = coord[0], float(coord[1]), float(coord[2]), float(coord[3])
+                
                 a_label = count_a + 1
                 a_atom = a + str(a_label) # label current alpha atom
                 
@@ -82,10 +87,8 @@ def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
                 
             elif coord[0]==beta: # execute if current atom is desired alpha
 
-                x = float(coord[1])
-                y = float(coord[2])
-                z = float(coord[3])
-                b = coord[0]
+                b, x, y, z = coord[0], float(coord[1]), float(coord[2]), float(coord[3])
+                
                 b_label = count_b + 1
                 b_atom = b + str(b_label) # label current beta atom
                 
@@ -104,9 +107,7 @@ def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
 
         data2, n_beta2, n_beta_tot2 = alpha_beta(L, rcut, coord_b, a, coord_a, data2, n_beta_tot2)
         n_data2 = calc_n_data(n_beta2, traj, n_data2) #beta-alpha
-
-    print(f"\n There are {count_a} {alpha} atoms, {count_b} {beta} atoms") 
-    
+ 
     cn_tot, N = av_cn(alpha, beta, n_beta_tot, n_traj_T, n_data)
     cn_tot2 , N2 = av_cn(beta, alpha, n_beta_tot2, n_traj_T, n_data2)
 
@@ -117,38 +118,42 @@ def CN(file,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
     save_files(alpha, beta, data, n_data, cn_tot, N, save_config, working_dir) # save alpha-beta
     save_files(beta, alpha, data2, n_data2, cn_tot2, N2, save_config, working_dir) # save beta-alpha
 
-    if T_step ==1:
+    print(f"\n *** Compute {alpha}-{beta} bond lifetimes ***")
 
-        print(f"\n *** Compute {alpha}-{beta} bond lifetimes ***")
-
-        start = time.time() # initiate runtime timer
+    start = time.time() # initiate runtime timer
     
-        b_lifetime, mean_b_lifetime, median_b_lifetime, max_b_lifetime, min_b_lifetime = bond_lifetime(data)
+    b_lifetime, mean_b_lifetime, median_b_lifetime, max_b_lifetime, min_b_lifetime = bond_lifetime(data)
 
-        end = time.time() # end runtime timer
-        elapsed = round(end - start , 4)
+    end = time.time() # end runtime timer
+    elapsed = round(end - start , 4)
 
-        str1 = " mean lifetime of " + alpha + "-" + beta + " bonds = " + str(mean_b_lifetime) + " timesteps"
-        str2 = " median lifetime = " + str(median_b_lifetime) + " timesteps"
-        str3 = " min lifetime = " + str(min_b_lifetime) + " timesteps"
-        str4 = " max lifetime = " + str(max_b_lifetime) + " timesteps"
-        print(str1)
-        print(str2)
-        print(str3)
-        print(str4)
-        print(f"\n runtime for lifetime calculations = {elapsed} s")
+    b_lifetime = b_lifetime*T_step
+    mean_b_lifetime = mean_b_lifetime*T_step
+    median_b_lifetime = median_b_lifetime*T_step
+    max_b_lifetime = max_b_lifetime*T_step
+    min_b_lifetime = min_b_lifetime*T_step
 
-        life_array = np.zeros(4, dtype=object)
+    str1 = " mean lifetime of " + alpha + "-" + beta + " bonds = " + str(mean_b_lifetime) + " timesteps"
+    str2 = " median lifetime = " + str(median_b_lifetime) + " timesteps"
+    str3 = " min lifetime = " + str(min_b_lifetime) + " timesteps"
+    str4 = " max lifetime = " + str(max_b_lifetime) + " timesteps"
+    print(str1)
+    print(str2)
+    print(str3)
+    print(str4)
+    print(f"\n runtime for lifetime calculations = {elapsed} s")
 
-        life_array[0] = str1
-        life_array[1] = str2
-        life_array[2] = str3
-        life_array[3] = str4
+    life_array = np.zeros(4, dtype=object)
 
-        CWD=os.getcwd()
-        fname = Path(CWD+"/"+working_dir+"/"+alpha + "-" + beta + "_bond_lifetime.dat")
+    life_array[0] = str1
+    life_array[1] = str2
+    life_array[2] = str3
+    life_array[3] = str4
+
+    CWD=os.getcwd()
+    fname = Path(CWD+"/"+working_dir+"/"+alpha + "-" + beta + "_bond_lifetime.dat")
         
-        np.savetxt(fname, life_array, delimiter =" ", fmt ="%s")
+    np.savetxt(fname, life_array, delimiter =" ", fmt ="%s")
 
     return data, data2
     
