@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Dr James Drewitt, 23/06/2020 # last update: 02/11/2022
+# Dr James Drewitt, 23/06/2020 # last update: 28/02/2023
 #
 import numpy as np
 import time
@@ -12,21 +12,22 @@ def CN(filename,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
 
     start = time.time() # initiate runtime timer
     
-    #Read xyz file
+    # Read xyz file
     print(f"\n reading file {filename} ....")
     #
     with open(filename, 'r') as f:
         data_list = f.readlines()
     
-    #determine number of atoms:
+    # determine the total number of atoms in the system:
     n_atoms = int(data_list[0])
 
-    #determine number of trajectories:
+    # determine the number of trajectories:
     n_traj = int(len(data_list) / (n_atoms+2))
     #
     print(f"\n xyz trajectory file contains {n_atoms} atoms and {n_traj} trajectories")
     
-    #truncate xyz trajectory
+    # truncate xyz trajectory if required
+    
     if n_traj > xyz_numT:
         trunc_traj = int(n_traj - xyz_numT)
         trunc_lines = int(trunc_traj *(n_atoms+2))
@@ -37,7 +38,9 @@ def CN(filename,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
     n_traj_T = int(n_traj/T_step)
     print(f"\n *** Calculating {alpha}-{beta} coordination ***")
     print(f" sampling every {T_step} trajectories, total trajectories in analysis = {n_traj_T}")
-    #calculate CN(alpha-beta)
+    
+    # define strings for output
+    
     str_n="n("+alpha+"-"+beta+")"
     str_r="r("+alpha+"-"+beta+") [rcut= "+str(rcut)+"])"
 
@@ -55,57 +58,51 @@ def CN(filename,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
     data2 = data.copy() # copy lists for beta-alpha calculation
     n_data2 = n_data.copy() 
     n_beta_tot2 = []
-
-    count_a = 0 # initilise counter
-    count_b = 0
     
     for traj in range(0, n_traj, T_step): # iterate over all trajectories with step T_step
            
-        count_a = 0 # reinitilise counter
+        count_a = 0 # (re)initilise counter
         count_b = 0
         
-        # iterate over each atom in current trajectory.
-        # each trajectory contains two header lines followed by natoms lines.
+        # each trajectory in an xyz file contains two header lines followed by {natoms} lines.
+        # iterate over atoms in current trajectory "traj" using a list comprehension
+        # if atom is "alpha" then append a tuple containing the atom symbol and its cartesian coordinates
+        # to the list "alpha_atoms_and_coords"
         
-        for i in range(2+traj*(n_atoms+2), n_atoms+2+traj*(n_atoms+2)): # iterate over each atom in current trajectory
-
-            coord=data_list[i].split() # get atomic coordinates of current atom
-            
-            if coord[0]==alpha: # execute if current atom is desired alpha
-
-                a, x, y, z = coord[0], float(coord[1]), float(coord[2]), float(coord[3])
+        alpha_atoms_and_coords = (
                 
-                a_label = count_a + 1
-                a_atom = a + str(a_label) # label current alpha atom
-                
-                if count_a == 0:
-                    coord_a = [[a_atom, x, y, z]]
-                else:
-                    coord_a.append( [a_atom, x, y, z] )
-
-                count_a += 1 # iterate counter
-                
-            elif coord[0]==beta: # execute if current atom is desired alpha
-
-                b, x, y, z = coord[0], float(coord[1]), float(coord[2]), float(coord[3])
-                
-                b_label = count_b + 1
-                b_atom = b + str(b_label) # label current beta atom
-                
-                if count_b == 0:
-                    coord_b = [[b_atom, x, y, z]]
-                else:
-                    coord_b.append( [b_atom, x, y, z] )
-
-                count_b += 1 # iterate counter
-
-        data.append([traj+1, " ", count_a, " ", " "])# provide current trajectory number for output
-        data2.append([traj+1, " ", count_b, " ", " "])# provide current trajectory number for output
+            [(a, float(x), float(y), float(z)) 
+             for line in data_list[2+traj*(n_atoms+2):n_atoms+2+traj*(n_atoms+2)]
+             for a, x, y, z in [line.split()] if a == alpha]
+            )
         
-        data, n_beta, n_beta_tot = alpha_beta(L, rcut, coord_a, b, coord_b, data, n_beta_tot)
+        # add labels to the atomic coordinates in "alpha_atoms_and_coords" and count the number of alpha atoms
+        
+        coord_a = [(f"{a}{i+1}", x, y, z) for i, (a, x, y, z) in enumerate(alpha_atoms_and_coords)]
+        count_a = len(coord_a)
+        
+        # if atom is "beta" then append a tuple containing the atom symbol and its cartesian coordinates
+        # to the list "beta_atoms_and_coords"
+        
+        beta_atoms_and_coords = (
+                
+            [(b, float(x), float(y), float(z)) 
+             for line in data_list[2+traj*(n_atoms+2):n_atoms+2+traj*(n_atoms+2)]
+             for b, x, y, z in [line.split()] if b == beta]
+            )
+        
+        # add labels to the atomic coordinates in "alpha_atoms_and_coords" and count the number of alpha atoms
+        
+        coord_b = [(f"{b}{i+1}", x, y, z) for i, (b, x, y, z) in enumerate(beta_atoms_and_coords)]
+        count_b = len(coord_b)
+        
+        data += [[traj+1, " ", count_a, " ", " "]] # provide current trajectory number for output
+        data2 += [[traj+1, " ", count_b, " ", " "]] # provide current trajectory number for output
+        
+        data, n_beta, n_beta_tot = alpha_beta(L, rcut, coord_a, beta, coord_b, data, n_beta_tot)
         n_data = calc_n_data(n_beta, traj, n_data) # alpha-beta
 
-        data2, n_beta2, n_beta_tot2 = alpha_beta(L, rcut, coord_b, a, coord_a, data2, n_beta_tot2)
+        data2, n_beta2, n_beta_tot2 = alpha_beta(L, rcut, coord_b, alpha, coord_a, data2, n_beta_tot2)
         n_data2 = calc_n_data(n_beta2, traj, n_data2) #beta-alpha
  
     cn_tot, N = av_cn(alpha, beta, n_beta_tot, n_traj_T, n_data)

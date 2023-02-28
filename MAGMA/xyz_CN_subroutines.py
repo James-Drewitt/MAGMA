@@ -4,7 +4,7 @@
 ##
 ## james.drewitt@bristol.ac.uk
 ##
-## Last update: 02/11/2022
+## Last update: 28/02/2023
 
 import numpy as np
 import os
@@ -19,11 +19,11 @@ def d_pbc(coord1, coord2, L):
     L-> configuration box length
     '''
 
-    if coord1 < 0:          #First check for negative coordinates
+    if coord1 < 0:          # First check for negative coordinates
         coord1 = L + coord1
     if coord2 < 0:
         coord2 = L + coord2 
-    d1 = abs(coord2 - coord1) #find minimum distance within periodic boundary conditions
+    d1 = abs(coord2 - coord1) # find minimum distance within periodic boundary conditions
     d2 = abs(coord2 - coord1 + L)
     d3 = abs(coord2 - coord1 - L)
 
@@ -52,7 +52,7 @@ def alpha_beta(L, rcut, coord_a, b, coord_b, data, n_beta_tot):
             for j in range(len(coord_b)):
                 x1, y1, z1, x2, y2, z2 = coord_a[i][1], coord_a[i][2], coord_a[i][3], coord_b[j][1], coord_b[j][2], coord_b[j][3] # extract coordinates of aplha-beta atoms
 
-                dx = abs(d_pbc(x1, x2, L))# calculate distance from central atom in each dimension
+                dx = abs(d_pbc(x1, x2, L)) # calculate distance from central atom in each dimension
                 dy = abs(d_pbc(y1, y2, L))
                 dz = abs(d_pbc(z1, z2, L))
                 d=np.sqrt( np.square(dx) + np.square(dy) + np.square(dz) )#compute distance
@@ -86,20 +86,32 @@ def alpha_beta(L, rcut, coord_a, b, coord_b, data, n_beta_tot):
 def calc_n_data(n_beta, traj, n_data):
 
     if len(n_beta) >= 1:
+        
+        # Add the minimum and maximum values in "n_beta" and the number of elements between these
+        # values to the "n_data" list. 
+        
         n_min = min(n_beta)
         n_max = max(n_beta)
         num_n = (n_max - n_min) + 1
-        n_data.append([traj+1, " " , num_n])
-
-        for k in range(n_min,n_max+1):
-            num_k=n_beta.count(k) # count number of specific partial coordinations
-            pc_k=num_k / len(n_beta) # compute per cent fraction
-            k_data = [k,num_k,pc_k*100] # populate array with fraction of specific coordination
-            n_data.append(k_data)
-        n_data.append( [" ", " ", " "] )
+        n_data += [[traj+1, " " , num_n]]
+        
+        # List comprehension to add a list containing the partial coordination value 'k' 
+        # the count of 'k' in 'n_beta', and its percent fraction
+        
+        n_data += (
+            [[k, n_beta.count(k), (n_beta.count(k)/len(n_beta))*100] 
+             for k in range(n_min, n_max+1)]
+            )
+        # Add empty strings to n_data
+        
+        n_data += [[" ", " ", " "]]
+    
     else:
-        n_data.append([traj+1, " ", 0])
-        n_data.append( [" ", " ", " "] )
+        
+        # Executes if n_beta is empty
+        
+        n_data += [traj+1, " ", 0]
+        n_data += [" ", " ", " "]
 
     return n_data
 
@@ -130,11 +142,11 @@ def av_cn(alpha, beta, n_beta_tot, n_traj_T, n_data):
              for q in range(n_tot):
                  if n_data[n][0] == cn_tot[0][q]:
                      cn_tot[1][q] += n_data[n][1] # populate each row with number of units of specified coordination
-        
+    
     total=0
     for val in cn_tot[1]:
         total += val
-        
+    
     for r in range(n_tot):
         cn_tot[2][r] = ( cn_tot[1][r] / total ) * 100 # fraction (per cent) of each partial coordination
         cn_tot[2][r] = round(cn_tot[2][r],3)
