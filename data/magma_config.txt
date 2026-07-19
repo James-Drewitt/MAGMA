@@ -1,0 +1,13 @@
+contcar_file = CONTCAR
+xyz_file = out.xyz
+xyz_numT = 1000
+T_step = 1
+alpha = Si
+beta = O
+r_cut_offs = 2.3
+save_detailed_analysis_data = false
+
+# Analysis choices
+bond_angle_distribution = true
+partial_coordination = 4
+q_speciation = true

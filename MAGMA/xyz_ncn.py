@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Dr James Drewitt, 27/08/2020. Last update: 02/11/2022
+# Dr James Drewitt, 27/08/2020. Last update: 19/07/2026
 #
 import time
 import numpy as np
@@ -104,8 +104,8 @@ def get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj, rcut):
     bins = np.linspace(0, rcut, int(rcut/0.01 +1))
     np_b_dist_hist, np_hist1 = np.histogram(bond_distance,bins) # generate histogram of bond angles
 
-    np.insert(np_b_dist_hist, 0, 0.01)
-    return p_data, p_data2, n_data2, n_beta_tot, a_set_list, a_list_tot, bond_distance, np_b_dist_hist
+    bin_centres = (bins[:-1] + bins[1:]) / 2
+    return p_data, p_data2, n_data2, n_beta_tot, a_set_list, a_list_tot, bond_distance, np_b_dist_hist, bin_centres
 
 def lifetime(a_set_list, a_list_tot, T_step):
     
@@ -138,12 +138,14 @@ def lifetime(a_set_list, a_list_tot, T_step):
             for j in range(n_traj):
                 if life[i, j+1] == 1:
                     L += 1
-                    if j == n_traj:
-                        life_time.append(L)
                 else:
                     if L != 0:
                         life_time.append(L)
                     L = 0 # reset L count
+            # Preserve a unit that remains present up to the final sampled
+            # frame; its observed lifetime is truncated the trajectory.
+            if L != 0:
+                life_time.append(L)
     else:
         life_time = 1,1
 
@@ -155,78 +157,59 @@ def lifetime(a_set_list, a_list_tot, T_step):
     return life_time, mean_lifetime, median_lifetime, max_lifetime, min_lifetime
 
 def get_Qn(beta, alpha, data, data2, p_CN, n_traj, rcut):
-    
-    print("\n *** Calculate Si[4] Q-speciation ***")
-    
-    n, x, y = 0, 0, 0 # initialise iterators
-    
-    O_index = []
-    O_CN = []
-    
-    cBO = 0 #initialise array for number of bridging oxygen
+    #Calculate Q-speciation from alphaO4 units in all sampled frames.
 
-    n_Q0, n_Q1, n_Q2, n_Q3, n_Q4 = 0, 0, 0, 0, 0
-    
-    tot_num_a = 0
-    
-    for i in range(n_traj):
-        
-        cBO_total = []
+    if p_CN != 4:
+        raise ValueError("Q-speciation requires four-coordinate alphaO4 units (p_CN = 4).")
 
+    print(f"\n *** Calculate {alpha}[4] Q-speciation ***")
+    n = 0
+    x = 0
+    q_values = []
+
+    for _ in range(n_traj):
+        # Collect the four oxygen labels around each alpha[4] unit in this frame.
         n += 1
-        n_a = data[n][2] # number of Si atoms
-
-        num_a = 0
-        
-        for j in range(n_a):
+        n_a = data[n][2]
+        tetrahedra = []
+        for _ in range(n_a):
             n += 1
-            cn_num = data[n][1] # number of partial coordinations in current trajectory
+            cn_num = data[n][1]
             if cn_num == p_CN:
-                num_a += 1
-                tot_num_a += 1
-                for k in range(2,cn_num+2):
-                    data[n+k][0]=data[n+k][0].replace('O','') # strip out index for all oxygen bonded to each Si
-                    O_index.append(data[n+k][0]) # array contains oxygen indices for each Si tetrahedron        
+                tetrahedra.append([data[n + k][0] for k in range(2, cn_num + 2)])
             n += cn_num + 2
-    
-        num_b = 0
+
+        # Map this frame's oxygen labels to their alpha coordination numbers.
         x += 1
         n_b = data2[x][2]
-
-
-        for j in range(n_b):
+        oxygen_cn = {}
+        for _ in range(n_b):
             x += 1
-            b_cn_num = data2[x][1] # number of O-Si partial coordinations in current trajectory
-            y+=1
-            O_CN.append(b_cn_num) #extract partial coordination of each oxygen in current trajectory
-            num_b += 1
+            b_cn_num = data2[x][1]
+            oxygen_label = data2[x + 1][0]
+            oxygen_cn[oxygen_label] = b_cn_num
             x += b_cn_num + 2
-    
-        for i in range(0,len(O_index)-3,4): #add up number of bridging oxygen's per silicon
-                  cBO += O_CN[int(O_index[i])-1]-1
-                  cBO += O_CN[int(O_index[i+1])-1]-1
-                  cBO += O_CN[int(O_index[i+2])-1]-1
-                  cBO += O_CN[int(O_index[i+3])-1]-1
-                  cBO_total.append(cBO)
-                  cBO = 0
-                 
-    n_Q0 += cBO_total.count(0) / (tot_num_a)
-    n_Q1 += cBO_total.count(1) / (tot_num_a)
-    n_Q2 += cBO_total.count(2) / (tot_num_a)
-    n_Q3 += cBO_total.count(3) / (tot_num_a)
-    n_Q4 += cBO_total.count(4) / (tot_num_a)
-             
-    
-    Q_list = ([ "Q0 "+str(round(n_Q0*100,2))+"%", "Q1 "+str(round(n_Q1*100,2))+"%", \
-             "Q2 "+str(round(n_Q2*100,2))+"%", "Q3 "+str(round(n_Q3*100,2))+"%", \
-             "Q4 "+str(round(n_Q4*100,2))+"%"])              
-              
+
+        for oxygen_labels in tetrahedra:
+            try:
+                # Q^n is the number of bridging oxygen atoms around a tetrahedron.
+                q_value = sum(oxygen_cn[label] >= 2 for label in oxygen_labels)
+            except KeyError as error:
+                raise ValueError(f"Missing O--{alpha} coordination for {error.args[0]}.") from error
+            q_values.append(q_value)
+
+    if not q_values:
+        raise ValueError(f"No {alpha}O4 units were found for Q-speciation.")
+
+    counts = [q_values.count(q) for q in range(5)]
+    total = len(q_values)
+    Q_list = [f"Q{q} {round((count / total) * 100, 2)}%" for q, count in enumerate(counts)]
+
     print(Q_list)
-        
     return Q_list
 
 
-def nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir, rcut, Qn):
+def nCN(p_CN, data, alpha, data2, beta, T_step, save_detailed_analysis_data, working_dir, rcut, Qn):
 
     start = time.time() # initiate runtime timer
     print(f"\n *** Consider partial coordination {alpha}-{beta} = {p_CN} ***")
@@ -237,7 +220,11 @@ def nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir, rcut, 
     p_data = [[ n_traj , " Configuration for ", str_n, " ", " " ]]
     p_data2 = [[ n_traj , " Configuration for ", str_n, " ", " " ]]
     
-    p_data, p_data2, n_data2, n_beta_tot, a_set_list, a_list_tot, bond_distance, np_b_dist_hist = get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj, rcut)
+    p_data, p_data2, n_data2, n_beta_tot, a_set_list, a_list_tot, bond_distance, np_b_dist_hist, distance_centres = get_n_list(beta, alpha, data, data2, p_data, p_data2, p_CN, n_traj, rcut)
+
+    if not n_beta_tot:
+        print(f" no {alpha}-{beta} = {p_CN} units were found; skipping this partial-coordination analysis")
+        return p_data, p_data2
 
     cn_tot2 , N2 = av_cn(beta, alpha, n_beta_tot, n_traj, n_data2) # average beta-alpha CN
 
@@ -324,20 +311,24 @@ def nCN(p_CN, data, alpha, data2, beta, T_step, save_config, working_dir, rcut, 
     np.savetxt(av_CN , np_cn_tot2 , delimiter=" " , fmt="%s" )
 
     b_dist_path = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+str(p_CN)+"-bond_dist.dat")
-    np.savetxt(b_dist_path, np_b_dist_hist, delimiter=" " , fmt="%s" )
+    distance_histogram = np.column_stack((distance_centres, np_b_dist_hist))
+    np.savetxt(
+        b_dist_path, distance_histogram, delimiter=" ", fmt=["%.3f", "%d"],
+        header="distance_angstrom count", comments="",
+    )
 
-    if save_config == 1:
+    if save_detailed_analysis_data == 1:
 
         np_bond_distance = np.array(bond_distance)
         bond_distance_path = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+str(p_CN)+"-bond_distance.dat")
         np.savetxt(bond_distance_path , np_bond_distance , delimiter=" " , fmt="%s" )
         
-        filename = Path(CWD+"/"+working_dir+"/"+alpha+str(p_CN)+"-"+beta+"-config.dat")
+        filename = Path(CWD+"/"+working_dir+"/"+alpha+str(p_CN)+"-"+beta+"-detailed_analysis_data.dat")
         np_p_data = np.array(p_data)
         print(f"\n ... saving {filename} ...")
         np.savetxt(filename, np_p_data, delimiter=" ", fmt ="%s")
 
-        filename = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+str(p_CN)+"-config.dat")
+        filename = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+str(p_CN)+"-detailed_analysis_data.dat")
         np_p_data2 = np.array(p_data2)
         print(f" ... saving {filename} ...")
         np.savetxt(filename, np_p_data2, delimiter=" ", fmt ="%s")

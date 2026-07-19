@@ -1,2 +1,7 @@
-data/001
-data/002
+# Folder containing the shared magma_config.txt used by a default batch run.
+config_folder = ./data
+
+# Data folders
+./data/001
+./data/002
+./data/003

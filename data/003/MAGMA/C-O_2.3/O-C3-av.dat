@@ -1,0 +1,12 @@
+n(C-O) = 3 number fraction (%)
+     
+1.0 139421.0 98.122
+2.0 2667.0 1.877
+3.0 1.0 0.001
+     
+average CN: 1.0187899999999999  
+     
+mean lifetime: 342.9568345323741 timesteps
+median lifetime: 199.0 timesteps
+min lifetime: 3 timesteps
+max lifetime: 1000 timesteps

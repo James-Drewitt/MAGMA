@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Dr James Drewitt, 17/08/2020. Last update: "02/11/2022"
+# Dr James Drewitt, 17/08/2020. Last update: "19/07/2026"
 #
 import numpy as np
 import time
@@ -104,26 +104,27 @@ def bad_calc(data, alpha, beta, L):
     BAD_list=BAD_list[1:][:] # remove empty first line
     BADs=BADs[1:][:] # remove empty first line
     bins = np.linspace(0, 180, 181)
-    np_hist, np_hist1 = np.histogram(BADs,bins) # generate histogram of bond angles
+    np_hist, _ = np.histogram(BADs,bins) # generate histogram of bond angles
+    bin_centres = (bins[:-1] + bins[1:]) / 2
 
-    return(BAD_list, np_hist)
+    return BAD_list, np_hist, bin_centres
 
-def bad(data, alpha, data2, beta, n_CN, p_CN, L, save_config, working_dir):
+def bad(data, alpha, data2, beta, n_CN, p_CN, L, save_detailed_analysis_data, working_dir):
 
     start = time.time() # initiate runtime timer
     print("\n *** Calculating bond angle distributions ***")
 
-    BAD_list, hist = bad_calc(data, alpha, beta, L) # calc beta-alpha-beta angles
-    BAD_list2, hist2 = bad_calc(data2, beta, alpha, L) # calc alpha-beta-alpha angles
+    BAD_list, hist, angles = bad_calc(data, alpha, beta, L) # calc beta-alpha-beta angles
+    BAD_list2, hist2, angles2 = bad_calc(data2, beta, alpha, L) # calc alpha-beta-alpha angles
 
     end = time.time() # end runtime timer
     elapsed = round(end - start , 4)
     print(f"\n runtime for bond angle calculations = {elapsed} s")
 
-    save_files(1, alpha, beta, BAD_list, hist, n_CN, p_CN, save_config, working_dir)
-    save_files(2, beta, alpha, BAD_list2, hist2, n_CN, p_CN, save_config, working_dir)
+    save_files(1, alpha, beta, BAD_list, hist, angles, n_CN, p_CN, save_detailed_analysis_data, working_dir)
+    save_files(2, beta, alpha, BAD_list2, hist2, angles2, n_CN, p_CN, save_detailed_analysis_data, working_dir)
 
-def save_files(meth, alpha, beta, BAD_list, np_hist, n_CN, p_CN, save_config, working_dir):
+def save_files(meth, alpha, beta, BAD_list, np_hist, angles, n_CN, p_CN, save_detailed_analysis_data, working_dir):
 
     CWD=os.getcwd()
     
@@ -143,9 +144,16 @@ def save_files(meth, alpha, beta, BAD_list, np_hist, n_CN, p_CN, save_config, wo
         BAD_hist = Path(CWD+"/"+working_dir+"/"+beta+"-"+alpha+"-"+beta+"_BAD_hist.dat")
 
     print(f" ... saving {BAD_hist}...")
-    np.savetxt(BAD_hist , np_hist , delimiter=" " , fmt="%s")
+    histogram = np.column_stack((angles, np_hist))
+    np.savetxt(
+        BAD_hist, histogram, delimiter=" ", fmt=["%.1f", "%d"],
+        header="angle_degrees count", comments="",
+    )
 
-    if save_config == 1:
+    if save_detailed_analysis_data == 1:
         print(f"\n ... saving {BAD_file} ...")
-        np.savetxt(BAD_file , np_BAD_list , delimiter=" " , fmt="%s")
+        np.savetxt(
+            BAD_file, np_BAD_list, delimiter=" ", fmt="%s",
+            header="outer_atom_1 central_atom outer_atom_2 angle_degrees", comments="",
+        )
     

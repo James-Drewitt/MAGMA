@@ -4,7 +4,7 @@
 ##
 ## james.drewitt@bristol.ac.uk
 ##
-## Last update: 28/02/2023
+## Last update: 19/07/2026
 
 import numpy as np
 import os
@@ -12,13 +12,11 @@ from pathlib import Path
 
 def d_pbc(coord1, coord2, L):
 
-    '''
-    Calculates the distance between two coordinates within periodic boundary conditions
-    coord1 -> coordinate 1
-    coord2 -> coordinate 2
-    L-> configuration box length
-    '''
-
+    #Calculates the distance between two coordinates within periodic boundary conditions
+    #coord1 -> coordinate 1
+    #coord2 -> coordinate 2
+    #L-> configuration box length
+    
     if coord1 < 0:          # First check for negative coordinates
         coord1 = L + coord1
     if coord2 < 0:
@@ -39,35 +37,37 @@ def d_pbc(coord1, coord2, L):
     return d
 
 
-def alpha_beta(L, rcut, coord_a, b, coord_b, data, n_beta_tot):
+def pair_distances(coord_a, coord_b, L):
+    #Return minimum-image distances between two labelled coordinate lists.
+
+    if not coord_a or not coord_b:
+        return np.empty((len(coord_a), len(coord_b)))
+
+    a_xyz = np.asarray([atom[1:] for atom in coord_a], dtype=float)
+    b_xyz = np.asarray([atom[1:] for atom in coord_b], dtype=float)
+    delta = b_xyz[None, :, :] - a_xyz[:, None, :]
+    # The minimum-image convention replaces three Python loops per atom pair.
+    delta -= L * np.rint(delta / L)
+    return np.sqrt(np.einsum("ijk,ijk->ij", delta, delta))
+
+
+def alpha_beta(L, rcut, coord_a, b, coord_b, data, n_beta_tot, distances=None):
 
     n_beta = [] # initialise coordination number list
     
-    for i in range(len(coord_a)):
+    if distances is None:
+        distances = pair_distances(coord_a, coord_b, L)
+
+    for i, (a_atom, x1, y1, z1) in enumerate(coord_a):
             pair=[[0,0,0,0,0],[0,0,0,0,0]] # initialise np array for current alpha-beta pair
-            n=0 # initialise counter
-            D=0 # initialise distance
-            a_atom=coord_a[i][0]
+            neighbours = np.flatnonzero(distances[i] <= rcut)
+            n = len(neighbours)
+            D = float(distances[i, neighbours].mean()) if n else "--"
 
-            for j in range(len(coord_b)):
-                x1, y1, z1, x2, y2, z2 = coord_a[i][1], coord_a[i][2], coord_a[i][3], coord_b[j][1], coord_b[j][2], coord_b[j][3] # extract coordinates of aplha-beta atoms
+            for j in neighbours:
+                b_atom, x2, y2, z2 = coord_b[j]
+                pair.append([b_atom, x2, y2, z2, float(distances[i, j])])
 
-                dx = abs(d_pbc(x1, x2, L)) # calculate distance from central atom in each dimension
-                dy = abs(d_pbc(y1, y2, L))
-                dz = abs(d_pbc(z1, z2, L))
-                d=np.sqrt( np.square(dx) + np.square(dy) + np.square(dz) )#compute distance
-
-                if d <= rcut:
-                    n+=1 # count beta atoms within distance rcut from alpha
-                    D+=d
-
-                    b_atom = coord_b[j][0]
-                    pair.append( [b_atom, x2, y2, z2, d] ) # populate array with alpha-beta pair and distance
-
-            if n == 0:
-                D = "--"
-            else:
-                D=D/n # average alpha-beta distance
             n_beta.append(n)
             n_beta_tot.append(n)
             string1="n("+a_atom+"-"+b+") ="
@@ -76,8 +76,7 @@ def alpha_beta(L, rcut, coord_a, b, coord_b, data, n_beta_tot):
             alpha_atom=[a_atom, x1, y1, z1, " "] # array containing atom alpha configuration
             pair[0]=p_coord
             pair[1]=alpha_atom
-            for m in range(len(pair)):
-                data.append(pair[m])
+            data.extend(pair)
             data.append( [" ", " ", " ", " ", " "] )
 
     return data, n_beta, n_beta_tot
@@ -103,15 +102,14 @@ def calc_n_data(n_beta, traj, n_data):
              for k in range(n_min, n_max+1)]
             )
         # Add empty strings to n_data
-        
         n_data += [[" ", " ", " "]]
-    
+
     else:
-        
-        # Executes if n_beta is empty
-        
-        n_data += [traj+1, " ", 0]
-        n_data += [" ", " ", " "]
+        # Executes if n_beta is empty.
+        # Keep the trajectory record nested, just like the non-empty case.
+        # Downstream averaging indexes this as a three-column row.
+        n_data += [[traj+1, " ", 0]]
+        n_data += [[" ", " ", " "]]
 
     return n_data
 
@@ -227,12 +225,14 @@ def bond_lifetime(data):
             for j in range(n_traj):
                 if life[i, j+1] == 1:
                     L += 1
-                    if j == n_traj:
-                        life_time.append(L)
                 else:
                     if L != 0:
                         life_time.append(L)
                     L = 0 # reset L count
+            # A bond present in the final sampled frame is right-censored by
+            # the trajectory boundary, but its observed lifetime still counts.
+            if L != 0:
+                life_time.append(L)
                     
     else:
         life_time = 1,1
@@ -245,7 +245,7 @@ def bond_lifetime(data):
     return life_time, mean_lifetime, median_lifetime, max_lifetime, min_lifetime
         
 
-def save_files(alpha, beta, data, n_data, cn_tot, N, save_config, working_dir):
+def save_files(alpha, beta, data, n_data, cn_tot, N, save_detailed_analysis_data, working_dir):
 
     CWD=os.getcwd()
     datadir=Path(CWD+"/"+working_dir)
@@ -278,9 +278,9 @@ def save_files(alpha, beta, data, n_data, cn_tot, N, save_config, working_dir):
     print(f" ... saving {av_CN} ...")
     np.savetxt(av_CN , np_cn_tot , delimiter=" " , fmt="%s" )
     
-    if save_config ==1:
+    if save_detailed_analysis_data ==1:
         np_data = np.array(data)
-        CN_config = Path(CWD+"/"+working_dir+"/"+alpha+"-"+beta+"-CN-config.dat")
+        CN_config = Path(CWD+"/"+working_dir+"/"+alpha+"-"+beta+"-CN-detailed_analysis_data.dat")
         print(f"\n ... saving {CN_config} ...")
         np.savetxt(CN_config , np_data , delimiter=" " , fmt="%s")
 

@@ -1,0 +1,23 @@
+# Copy this file into a data folder as magma_config.txt. One option per line.
+contcar_file = CONTCAR
+xyz_file = movie.xyz
+xyz_numT = 1000
+T_step = 1
+alpha = C
+beta = O
+r_cut_offs = 2.3
+save_detailed_analysis_data = false
+
+# Analysis choices
+bond_angle_distribution = true
+partial_coordination = 3
+q_speciation = false
+
+# Carbonate analysis: CO3+1 and C2O5
+carbonate_enabled = false
+carbonate_short_cutoff = 2.0
+carbonate_CC_cutoff = 2.0
+carbonate_long_min = 2.4
+carbonate_long_max = 2.9
+carbonate_angle_tolerance = 20.0
+carbonate_axial_tolerance = 20.0

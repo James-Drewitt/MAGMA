@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 #
-# Dr James Drewitt, 23/06/2020 # last update: 28/02/2023
+# Dr James Drewitt, 23/06/2020. last update: '19/07/2026'
 #
 import numpy as np
 import time
-from xyz_CN_subroutines import alpha_beta, calc_n_data, av_cn, bond_lifetime, save_files
+from xyz_CN_subroutines import alpha_beta, pair_distances, calc_n_data, av_cn, bond_lifetime, save_files
 import os
 from pathlib import Path
 
-def CN(filename,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
+def CN(filename,T_step,alpha,beta,rcut,L, save_detailed_analysis_data, xyz_numT, working_dir):
 
     start = time.time() # initiate runtime timer
     
@@ -64,45 +64,31 @@ def CN(filename,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
         count_a = 0 # (re)initilise counter
         count_b = 0
         
-        # each trajectory in an xyz file contains two header lines followed by {natoms} lines.
-        # iterate over atoms in current trajectory "traj" using a list comprehension
-        # if atom is "alpha" then append a tuple containing the atom symbol and its cartesian coordinates
-        # to the list "alpha_atoms_and_coords"
-        
-        alpha_atoms_and_coords = (
-                
-            [(a, float(x), float(y), float(z)) 
-             for line in data_list[2+traj*(n_atoms+2):n_atoms+2+traj*(n_atoms+2)]
-             for a, x, y, z in [line.split()] if a == alpha]
-            )
-        
-        # add labels to the atomic coordinates in "alpha_atoms_and_coords" and count the number of alpha atoms
-        
+        frame = data_list[2 + traj * (n_atoms + 2):n_atoms + 2 + traj * (n_atoms + 2)]
+        alpha_atoms_and_coords = []
+        beta_atoms_and_coords = []
+        for line in frame:
+            atom, x, y, z = line.split()
+            coord = (atom, float(x), float(y), float(z))
+            if atom == alpha:
+                alpha_atoms_and_coords.append(coord)
+            elif atom == beta:
+                beta_atoms_and_coords.append(coord)
+
         coord_a = [(f"{a}{i+1}", x, y, z) for i, (a, x, y, z) in enumerate(alpha_atoms_and_coords)]
         count_a = len(coord_a)
-        
-        # if atom is "beta" then append a tuple containing the atom symbol and its cartesian coordinates
-        # to the list "beta_atoms_and_coords"
-        
-        beta_atoms_and_coords = (
-                
-            [(b, float(x), float(y), float(z)) 
-             for line in data_list[2+traj*(n_atoms+2):n_atoms+2+traj*(n_atoms+2)]
-             for b, x, y, z in [line.split()] if b == beta]
-            )
-        
-        # add labels to the atomic coordinates in "alpha_atoms_and_coords" and count the number of alpha atoms
-        
         coord_b = [(f"{b}{i+1}", x, y, z) for i, (b, x, y, z) in enumerate(beta_atoms_and_coords)]
         count_b = len(coord_b)
         
         data += [[traj+1, " ", count_a, " ", " "]] # provide current trajectory number for output
         data2 += [[traj+1, " ", count_b, " ", " "]] # provide current trajectory number for output
         
-        data, n_beta, n_beta_tot = alpha_beta(L, rcut, coord_a, beta, coord_b, data, n_beta_tot)
+        # One distance matrix serves both alpha-beta and beta-alpha analyses.
+        distances = pair_distances(coord_a, coord_b, L)
+        data, n_beta, n_beta_tot = alpha_beta(L, rcut, coord_a, beta, coord_b, data, n_beta_tot, distances)
         n_data = calc_n_data(n_beta, traj, n_data) # alpha-beta
 
-        data2, n_beta2, n_beta_tot2 = alpha_beta(L, rcut, coord_b, alpha, coord_a, data2, n_beta_tot2)
+        data2, n_beta2, n_beta_tot2 = alpha_beta(L, rcut, coord_b, alpha, coord_a, data2, n_beta_tot2, distances.T)
         n_data2 = calc_n_data(n_beta2, traj, n_data2) #beta-alpha
  
     cn_tot, N = av_cn(alpha, beta, n_beta_tot, n_traj_T, n_data)
@@ -112,8 +98,8 @@ def CN(filename,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
     elapsed = round(end - start , 4)
     print(f"\n runtime for coordination number calculations = {elapsed} s")
 
-    save_files(alpha, beta, data, n_data, cn_tot, N, save_config, working_dir) # save alpha-beta
-    save_files(beta, alpha, data2, n_data2, cn_tot2, N2, save_config, working_dir) # save beta-alpha
+    save_files(alpha, beta, data, n_data, cn_tot, N, save_detailed_analysis_data, working_dir) # save alpha-beta
+    save_files(beta, alpha, data2, n_data2, cn_tot2, N2, save_detailed_analysis_data, working_dir) # save beta-alpha
 
     print(f"\n *** Compute {alpha}-{beta} bond lifetimes ***")
 
@@ -153,5 +139,4 @@ def CN(filename,T_step,alpha,beta,rcut,L, save_config, xyz_numT, working_dir):
     np.savetxt(fname, life_array, delimiter =" ", fmt ="%s")
 
     return data, data2
-    
     
