@@ -226,8 +226,7 @@ print(f" Running in {run_mode} mode for {len(tasks)} folder(s).\n")
 if args.confirm and run_mode != "serial":
     print(" --confirm is available only in serial mode; batch runs are non-interactive.\n")
 if run_mode != "serial":
-    config_mode = "independent configurations with shared fallback" if args.config_override else "shared configuration"
-    print(f" Batch configuration mode: {config_mode}.\n")
+    print(f" Batch configuration mode.\n")
     print(f" Shared configuration folder: {batch_config_folder}\n")
 
 for task_number, task in enumerate(tasks, start=1):
@@ -277,7 +276,6 @@ for task_number, task in enumerate(tasks, start=1):
             public_config_text = text_config_source.read_text(encoding="utf-8")
             analysis_options = parse_text_config(public_config_text)
             config_text = render_python_config(analysis_options)
-            print(f" Using independent configuration {text_config_source}\n")
         else:
             print(' Generating config file...\n' );sys.stdout.flush()
             public_config_text = default_text_config()
