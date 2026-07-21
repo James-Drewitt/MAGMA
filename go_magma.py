@@ -203,6 +203,7 @@ def confirm_configuration(task_path, config_text, mode, number, total, has_saved
     return None if result["config"] is None else (result["config"], result["save"])
 
 if args.select:
+    batch_input_mode = False
     from tkinter import Tk, filedialog
 
     picker = Tk()
@@ -216,6 +217,7 @@ if args.select:
         sys.exit("No folder selected; MAGMA was not run.")
     tasks = [selected_folder]
 else:
+    batch_input_mode = True
     try:
         tasks, batch_config_folder = load_batch_input(launch_dir / "input_magma.txt")
     except (OSError, ValueError) as error:
@@ -225,7 +227,7 @@ run_mode = "batch (sequential)" if len(tasks) > 1 else "serial"
 print(f" Running in {run_mode} mode for {len(tasks)} folder(s).\n")
 if args.confirm and run_mode != "serial":
     print(" --confirm is available only in serial mode; batch runs are non-interactive.\n")
-if run_mode != "serial":
+if batch_input_mode:
     print(f" Batch configuration mode.\n")
     print(f" Shared configuration folder: {batch_config_folder}\n")
 
@@ -236,7 +238,7 @@ for task_number, task in enumerate(tasks, start=1):
         if not task_path.is_absolute():
             task_path = Path(CWD) / task_path
         print(f"\n Running data folder {task_number} of {len(tasks)}: {task_path}\n")
-        if run_mode != "serial" and not args.config_override:
+        if batch_input_mode and not args.config_override:
             text_config_source = batch_config_folder / "magma_config.txt"
             if not text_config_source.is_file():
                 sys.exit(
@@ -246,7 +248,7 @@ for task_number, task in enumerate(tasks, start=1):
                 )
         else:
             text_config_source = task_path / "magma_config.txt"
-            if run_mode != "serial" and args.config_override and not text_config_source.is_file():
+            if batch_input_mode and args.config_override and not text_config_source.is_file():
                 shared_config_source = batch_config_folder / "magma_config.txt"
                 if not shared_config_source.is_file():
                     sys.exit(
@@ -276,6 +278,7 @@ for task_number, task in enumerate(tasks, start=1):
             public_config_text = text_config_source.read_text(encoding="utf-8")
             analysis_options = parse_text_config(public_config_text)
             config_text = render_python_config(analysis_options)
+            print(f" Using configuration {text_config_source}\n")
         else:
             print(' Generating config file...\n' );sys.stdout.flush()
             public_config_text = default_text_config()
