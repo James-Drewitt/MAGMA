@@ -44,22 +44,31 @@ def _write_lifetime(path, unit_name, lifetimes):
     np.savetxt(path, np.asarray(values, dtype=object), fmt="%s")
 
 
-def _append_cn_summary(output_dir, prefix, CO3plus1_counts, C2O5_counts, carbon_counts):
+def _append_cn_summary(
+    output_dir, prefix, CO3plus1_counts, C2O5_counts,
+    C2O5_bridge_counts, C2O5_homopolar_counts, carbon_counts,
+):
     """Append carbonate populations to the average coordination number output."""
     total_CO3plus1 = sum(CO3plus1_counts)
     total_carbons = sum(carbon_counts)
     total_C2O5 = sum(C2O5_counts)
+    total_C2O5_bridge = sum(C2O5_bridge_counts)
+    total_C2O5_homopolar = sum(C2O5_homopolar_counts)
     mean_CO3plus1 = float(np.mean(CO3plus1_counts)) if CO3plus1_counts else 0.0
     CO3plus1_carbon_percent = 100.0 * total_CO3plus1 / total_carbons if total_carbons else 0.0
     mean_C2O5 = float(np.mean(C2O5_counts)) if C2O5_counts else 0.0
     C2O5_carbon_percent = 200.0 * total_C2O5 / total_carbons if total_carbons else 0.0
+    C2O5_bridge_percent = 100.0 * total_C2O5_bridge / total_C2O5 if total_C2O5 else 0.0
+    C2O5_homopolar_percent = 100.0 * total_C2O5_homopolar / total_C2O5 if total_C2O5 else 0.0
 
     with (output_dir / f"{prefix}-CN-av.dat").open("a", encoding="utf-8") as handle:
         handle.write("\ncarbonate_summary\n")
         handle.write(f"mean number of CO3+1 units: {mean_CO3plus1:.6f}\n")
         handle.write(f"fraction of carbon atoms in CO3+1 units: {CO3plus1_carbon_percent:.4f} %\n\n")
         handle.write(f"mean number of C2O5 units: {mean_C2O5:.6f}\n")
-        handle.write(f"fraction of carbon atoms in C2O5 units: {C2O5_carbon_percent:.4f} %\n")
+        handle.write(f"fraction of carbon atoms in C2O5 units: {C2O5_carbon_percent:.4f} %\n\n")
+        handle.write(f"fraction of C2O5 units with a bridging oxygen: {C2O5_bridge_percent:.4f} %\n")
+        handle.write(f"fraction of C2O5 units with homopolar C=C bonding: {C2O5_homopolar_percent:.4f} %\n")
 
 def carbonate_units(
     filename, t_step, alpha, beta, box_length, xyz_num_t, working_dir,
@@ -100,7 +109,6 @@ def carbonate_units(
     CO3plus1_rows = []
     C2O5_rows = []
     CO3plus1_counts = []
-    CO4_counts = []
     C2O5_counts = []
     carbon_counts = []
 
@@ -122,12 +130,9 @@ def carbonate_units(
 
         trigonal = {}
         CO3plus1 = set()
-        CO4_count = 0
         for c_index, carbon in enumerate(carbons):
             short = np.flatnonzero(distances[c_index] <= short_cutoff)
             long_bonds = np.flatnonzero((distances[c_index] >= long_min) & (distances[c_index] <= long_max))
-            if len(short) == 3 and len(long_bonds) == 1:
-                CO4_count += 1
             if len(short) != 3:
                 continue
             short_vectors = vectors[c_index, short]
@@ -185,7 +190,6 @@ def carbonate_units(
         C2O5_bridge_frames.append(C2O5_bridge)
         C2O5_homopolar_frames.append(C2O5_homopolar)
         CO3plus1_counts.append([frame_number, len(CO3plus1)])
-        CO4_counts.append(CO4_count)
         C2O5_counts.append([frame_number, len(C2O5), len(C2O5_bridge), len(C2O5_homopolar)])
         carbon_counts.append(len(carbons))
         CO3plus1_rows.extend([[frame_number, unit] for unit in sorted(CO3plus1)])
@@ -227,6 +231,9 @@ def carbonate_units(
     _append_cn_summary(
         output_dir, prefix,
         [count for _, count in CO3plus1_counts],
-        [count for _, count, _, _ in C2O5_counts], carbon_counts,
+        [count for _, count, _, _ in C2O5_counts],
+        [bridge_count for _, _, bridge_count, _ in C2O5_counts],
+        [homopolar_count for _, _, _, homopolar_count in C2O5_counts],
+        carbon_counts,
     )
     return CO3plus1_frames, C2O5_frames
