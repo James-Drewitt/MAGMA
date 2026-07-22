@@ -44,32 +44,63 @@ def _write_lifetime(path, unit_name, lifetimes):
     np.savetxt(path, np.asarray(values, dtype=object), fmt="%s")
 
 
-def _append_cn_summary(
-    output_dir, prefix, CO3plus1_counts, C2O5_counts,
-    C2O5_bridge_counts, C2O5_homopolar_counts, carbon_counts,
-):
-    """Append carbonate populations to the average coordination number output."""
-    total_CO3plus1 = sum(CO3plus1_counts)
+def _population_statistics(frame_units, carbon_counts, carbon_atoms_per_unit, t_step):
+    """Calculate time-averaged, conditional, and kinetic unit statistics."""
+    counts = [len(units) for units in frame_units]
+    total_units = sum(counts)
     total_carbons = sum(carbon_counts)
-    total_C2O5 = sum(C2O5_counts)
-    total_C2O5_bridge = sum(C2O5_bridge_counts)
-    total_C2O5_homopolar = sum(C2O5_homopolar_counts)
-    mean_CO3plus1 = float(np.mean(CO3plus1_counts)) if CO3plus1_counts else 0.0
-    CO3plus1_carbon_percent = 100.0 * total_CO3plus1 / total_carbons if total_carbons else 0.0
-    mean_C2O5 = float(np.mean(C2O5_counts)) if C2O5_counts else 0.0
-    C2O5_carbon_percent = 200.0 * total_C2O5 / total_carbons if total_carbons else 0.0
+    positive_counts = [count for count in counts if count]
+    lifetimes = _lifetimes(frame_units, t_step)
+    formation_events = sum(
+        len(current - previous)
+        for previous, current in zip(frame_units, frame_units[1:])
+    )
+    carbon_time = sum(carbon_counts[1:]) * t_step
+
+    return {
+        "presence_percent": 100.0 * len(positive_counts) / len(counts) if counts else 0.0,
+        "mean_count": float(np.mean(counts)) if counts else 0.0,
+        "mean_when_present": float(np.mean(positive_counts)) if positive_counts else 0.0,
+        "carbon_percent": (
+            100.0 * carbon_atoms_per_unit * total_units / total_carbons if total_carbons else 0.0
+        ),
+        "formation_events": formation_events,
+        "formation_rate": formation_events / carbon_time if carbon_time else 0.0,
+        "mean_lifetime": float(np.mean(lifetimes)) if lifetimes else 0.0,
+        "median_lifetime": float(np.median(lifetimes)) if lifetimes else 0.0,
+    }
+
+
+def _write_population_statistics(handle, unit_name, statistics):
+    handle.write(f"{unit_name}:\n")
+    handle.write(f"carbon atoms in {unit_name} units: {statistics['carbon_percent']:.4f} %\n\n")
+    handle.write(f"frames containing {unit_name} units: {statistics['presence_percent']:.4f} %\n")
+    handle.write(f"mean {unit_name} units per frame: {statistics['mean_count']:.6f}\n")
+    handle.write(f"mean {unit_name} units when present: {statistics['mean_when_present']:.6f}\n\n")
+    handle.write(f"mean {unit_name} lifetime: {statistics['mean_lifetime']:.6f} timesteps\n")
+    handle.write(f"median {unit_name} lifetime: {statistics['median_lifetime']:.6f} timesteps\n")
+    handle.write(f"{unit_name} formation events after first sampled frame: {statistics['formation_events']}\n")
+    handle.write(f"{unit_name} formation rate per carbon per timestep: {statistics['formation_rate']:.8f}\n")
+def _append_cn_summary(
+    output_dir, prefix, CO3plus1_frames, C2O5_frames, C2O5_bridge_frames,
+    C2O5_homopolar_frames, carbon_counts, t_step,
+):
+    """Append carbonate populations to the coordination-number average file."""
+    CO3plus1_statistics = _population_statistics(CO3plus1_frames, carbon_counts, 1, t_step)
+    C2O5_statistics = _population_statistics(C2O5_frames, carbon_counts, 2, t_step)
+    total_C2O5 = sum(len(units) for units in C2O5_frames)
+    total_C2O5_bridge = sum(len(units) for units in C2O5_bridge_frames)
+    total_C2O5_homopolar = sum(len(units) for units in C2O5_homopolar_frames)
     C2O5_bridge_percent = 100.0 * total_C2O5_bridge / total_C2O5 if total_C2O5 else 0.0
     C2O5_homopolar_percent = 100.0 * total_C2O5_homopolar / total_C2O5 if total_C2O5 else 0.0
 
     with (output_dir / f"{prefix}-CN-av.dat").open("a", encoding="utf-8") as handle:
-        handle.write("\ncarbonate_summary\n")
-        handle.write(f"mean number of CO3+1 units: {mean_CO3plus1:.6f}\n")
-        handle.write(f"fraction of carbon atoms in CO3+1 units: {CO3plus1_carbon_percent:.4f} %\n\n")
-        handle.write(f"mean number of C2O5 units: {mean_C2O5:.6f}\n")
-        handle.write(f"fraction of carbon atoms in C2O5 units: {C2O5_carbon_percent:.4f} %\n\n")
-        handle.write(f"fraction of C2O5 units with a bridging oxygen: {C2O5_bridge_percent:.4f} %\n")
+        handle.write("\ncarbonate_summary\n\n")                                                                                                 
+        _write_population_statistics(handle, "CO3+1", CO3plus1_statistics)
+        handle.write("\n")
+        _write_population_statistics(handle, "C2O5", C2O5_statistics)
+        handle.write(f"\nfraction of C2O5 units with a bridging oxygen: {C2O5_bridge_percent:.4f} %\n")
         handle.write(f"fraction of C2O5 units with homopolar C=C bonding: {C2O5_homopolar_percent:.4f} %\n")
-
 def carbonate_units(
     filename, t_step, alpha, beta, box_length, xyz_num_t, working_dir,
     short_cutoff=2.0, CC_cutoff=2.0, long_min=2.4, long_max=2.9,
@@ -229,11 +260,13 @@ def carbonate_units(
         "homopolar C2O5", _lifetimes(C2O5_homopolar_frames, t_step),
     )
     _append_cn_summary(
-        output_dir, prefix,
-        [count for _, count in CO3plus1_counts],
-        [count for _, count, _, _ in C2O5_counts],
-        [bridge_count for _, _, bridge_count, _ in C2O5_counts],
-        [homopolar_count for _, _, _, homopolar_count in C2O5_counts],
+        output_dir,
+        prefix,
+        CO3plus1_frames,
+        C2O5_frames,
+        C2O5_bridge_frames,
+        C2O5_homopolar_frames,
         carbon_counts,
+        t_step,
     )
     return CO3plus1_frames, C2O5_frames
