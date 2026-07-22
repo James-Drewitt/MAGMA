@@ -226,7 +226,7 @@ def carbonate_units(
     )
     _append_cn_summary(
         output_dir, prefix,
-        [count for _, count in CO3plus1_counts], CO4_counts,
+        [count for _, count in CO3plus1_counts],
         [count for _, count, _, _ in C2O5_counts], carbon_counts,
     )
     return CO3plus1_frames, C2O5_frames
